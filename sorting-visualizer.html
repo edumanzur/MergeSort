@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sorting Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface-2: #171724;
+    --border: #1e1e2e;
+    --text: #e8e8f0;
+    --muted: #5a5a7a;
+    --accent-merge: #00e5ff;
+    --accent-bubble: #ff6b6b;
+    --compare: #ffd166;
+    --swap: #ff006e;
+    --sorted: #06d6a0;
+    --bar-default: #2a2a3e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #root {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px 56px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+
+  .title .merge { color: var(--accent-merge); }
+  .title .bubble { color: var(--accent-bubble); }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 18px;
+  }
+
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+  }
+
+  .example-picker {
+    background: linear-gradient(180deg, rgba(23,23,36,0.96), rgba(18,18,26,0.96));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 28px;
+  }
+
+  .example-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .example-picker-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+
+  .example-picker-help {
+    color: var(--muted);
+    font-size: 0.72rem;
+  }
+
+  .example-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .example-card {
+    width: 100%;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .example-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.04);
+  }
+
+  .example-card.active {
+    border-color: var(--accent-merge);
+    box-shadow: 0 0 0 1px rgba(0,229,255,0.14) inset;
+  }
+
+  .example-card-title {
+    display: block;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .example-card-desc {
+    display: block;
+    color: var(--muted);
+    font-size: 0.72rem;
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    white-space: nowrap;
+  }
+
+  input[type="range"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 120px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--text);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  input[type="range"]:hover::-webkit-slider-thumb {
+    background: var(--accent-merge);
+  }
+
+  .value-display {
+    font-size: 0.8rem;
+    color: var(--text);
+    min-width: 28px;
+    text-align: right;
+  }
+
+  .btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid;
+    border-radius: 4px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+  }
+
+  .btn-primary {
+    border-color: var(--accent-merge);
+    color: var(--accent-merge);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-merge);
+    color: var(--bg);
+  }
+
+  .btn-danger {
+    border-color: var(--accent-bubble);
+    color: var(--accent-bubble);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: var(--accent-bubble);
+    color: var(--bg);
+  }
+
+  .btn-neutral {
+    border-color: var(--muted);
+    color: var(--muted);
+  }
+
+  .btn-neutral:hover:not(:disabled) {
+    border-color: var(--text);
+    color: var(--text);
+  }
+
+  .btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+  }
+
+  .panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 900px) {
+    .example-list { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 700px) {
+    .panels { grid-template-columns: 1fr; }
+    .complexity { grid-template-columns: 1fr; }
+    .controls { flex-direction: column; align-items: center; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .panel-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .panel-title.merge { color: var(--accent-merge); }
+  .panel-title.bubble { color: var(--accent-bubble); }
+
+  .panel-stats {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+
+  .stat-val {
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .viz-area {
+    height: 220px;
+    display: flex;
+    align-items: flex-end;
+    padding: 16px 12px 0;
+    gap: 2px;
+  }
+
+  .bar {
+    flex: 1;
+    border-radius: 2px 2px 0 0;
+    transition: height 0.05s;
+    background: var(--bar-default);
+    position: relative;
+    min-width: 2px;
+  }
+
+  .bar.sorted {
+    background: var(--sorted);
+    box-shadow: 0 0 6px var(--sorted);
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-top: 1px solid var(--border);
+    font-size: 0.65rem;
+    color: var(--muted);
+    min-height: 38px;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .status-dot.active { background: var(--compare); animation: pulse 0.8s infinite; }
+  .status-dot.done { background: var(--sorted); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .timer {
+    font-size: 0.9rem;
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .timer.merge { color: var(--accent-merge); }
+  .timer.bubble { color: var(--accent-bubble); }
+
+  .complexity {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 8px;
+  }
+
+  .complexity-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  .complexity-card strong {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .complexity-card strong.merge { color: var(--accent-merge); }
+  .complexity-card strong.bubble { color: var(--accent-bubble); }
+
+  .complexity-card code {
+    color: var(--text);
+    background: var(--border);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+  }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useEffect, useMemo, useRef, useState } = React;
+
+    const SMALL_RANDOM_LIST = [
+      84, 17, 63, 29, 91, 42, 58, 13, 76, 35, 67, 24,
+    ];
+
+    const MEDIUM_RANDOM_LIST = [
+      72, 14, 88, 37, 59, 21, 95, 46, 68, 11, 53, 27,
+      81, 33, 74, 19, 62, 48, 97, 25, 70, 39, 56, 16,
+    ];
+
+    const LARGE_RANDOM_LIST = [
+      432, 809, 213, 725, 37, 960, 578, 63, 921, 145, 689, 281, 506, 955, 194, 374, 820, 62, 890, 485,
+      786, 911, 394, 178, 627, 902, 420, 579, 733, 96, 311, 654, 250, 771, 9, 624, 712, 135, 505, 884,
+      445, 688, 77, 912, 721, 390, 538, 893, 470, 679, 1, 869, 302, 946, 561, 144, 790, 422, 769, 57,
+      899, 308, 687, 469, 237, 630, 961, 36, 578, 799, 180, 628, 886, 298, 835, 62, 974, 214, 518, 746,
+      132, 899, 243, 511, 798, 235, 681, 61, 918, 375, 692, 993, 183, 553, 846, 24, 954, 286, 647, 129,
+    ];
+
+    const EXAMPLE_LISTS = [
+      {
+        id: 'small',
+        title: 'Aleatória Pequena',
+        description: `${SMALL_RANDOM_LIST.length} elementos`,
+        data: SMALL_RANDOM_LIST,
+      },
+      {
+        id: 'medium',
+        title: 'Aleatória Média',
+        description: `${MEDIUM_RANDOM_LIST.length} elementos`,
+        data: MEDIUM_RANDOM_LIST,
+      },
+      {
+        id: 'large',
+        title: 'Aleatória Grande',
+        description: `${LARGE_RANDOM_LIST.length} elementos`,
+        data: LARGE_RANDOM_LIST,
+      },
+    ];
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const getDelay = (speed) => Math.round(300 / (speed * speed * 0.3 + 1));
+
+    const cloneArray = (values) => [...values];
+
+    function App() {
+      const [speed, setSpeed] = useState(5);
+      const [selectedExample, setSelectedExample] = useState('small');
+      const [baseArray, setBaseArray] = useState(() => cloneArray(SMALL_RANDOM_LIST));
+      const [mergeArray, setMergeArray] = useState(() => cloneArray(SMALL_RANDOM_LIST));
+      const [bubbleArray, setBubbleArray] = useState(() => cloneArray(SMALL_RANDOM_LIST));
+      const [mergeComps, setMergeComps] = useState(0);
+      const [mergeMerges, setMergeMerges] = useState(0);
+      const [mergeTime, setMergeTime] = useState('0.000ms');
+      const [bubbleComps, setBubbleComps] = useState(0);
+      const [bubbleSwaps, setBubbleSwaps] = useState(0);
+      const [bubbleTime, setBubbleTime] = useState('0.000ms');
+      const [mergeStatus, setMergeStatus] = useState('Aguardando...');
+      const [bubbleStatus, setBubbleStatus] = useState('Aguardando...');
+      const [mergeState, setMergeState] = useState('idle');
+      const [bubbleState, setBubbleState] = useState('idle');
+      const [running, setRunning] = useState(false);
+
+      const stopRef = useRef(false);
+      const runningRef = useRef(false);
+
+      const selectedExampleData = useMemo(
+        () => EXAMPLE_LISTS.find((item) => item.id === selectedExample) || EXAMPLE_LISTS[0],
+        [selectedExample]
+      );
+
+      const resetStats = () => {
+        setMergeComps(0);
+        setMergeMerges(0);
+        setMergeTime('0.000ms');
+        setBubbleComps(0);
+        setBubbleSwaps(0);
+        setBubbleTime('0.000ms');
+      };
+
+      const resetStatuses = (message = 'Aguardando...') => {
+        setMergeState('idle');
+        setBubbleState('idle');
+        setMergeStatus(message);
+        setBubbleStatus(message);
+      };
+
+      const loadExample = (mode = selectedExample) => {
+        const nextExample = EXAMPLE_LISTS.find((item) => item.id === mode) || EXAMPLE_LISTS[0];
+        const nextArray = cloneArray(nextExample.data);
+
+        setSelectedExample(nextExample.id);
+        setBaseArray(nextArray);
+        setMergeArray(nextArray);
+        setBubbleArray(nextArray);
+        resetStats();
+        resetStatuses('Aguardando...');
+      };
+
+      useEffect(() => {
+        loadExample('small');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
+
+      const runMergeSort = async (source) => {
+        const arr = [...source];
+        let comps = 0;
+        let merges = 0;
+        const startTime = performance.now();
+
+        const updateTime = () => setMergeTime(`${(performance.now() - startTime).toFixed(3)}ms`);
+
+        const merge = async (left, mid, right) => {
+          const leftArr = arr.slice(left, mid + 1);
+          const rightArr = arr.slice(mid + 1, right + 1);
+          let i = 0;
+          let j = 0;
+          let k = left;
+
+          while (i < leftArr.length && j < rightArr.length) {
+            if (stopRef.current) {
+              return;
+            }
+
+            comps += 1;
+            setMergeComps(comps);
+            setMergeState('active');
+            setMergeStatus(`Comparando blocos em ${left + i} e ${mid + 1 + j}`);
+            updateTime();
+
+            await sleep(getDelay(speed));
+
+            if (leftArr[i] <= rightArr[j]) {
+              arr[k] = leftArr[i];
+              i += 1;
+            } else {
+              arr[k] = rightArr[j];
+              j += 1;
+            }
+
+            merges += 1;
+            k += 1;
+            setMergeMerges(merges);
+            setMergeArray([...arr]);
+            updateTime();
+            await sleep(Math.max(1, Math.round(getDelay(speed) * 0.5)));
+          }
+
+          while (i < leftArr.length) {
+            if (stopRef.current) {
+              return;
+            }
+
+            arr[k] = leftArr[i];
+            i += 1;
+            k += 1;
+            merges += 1;
+            setMergeMerges(merges);
+          }
+
+          while (j < rightArr.length) {
+            if (stopRef.current) {
+              return;
+            }
+
+            arr[k] = rightArr[j];
+            j += 1;
+            k += 1;
+            merges += 1;
+            setMergeMerges(merges);
+          }
+
+          setMergeArray([...arr]);
+        };
+
+        const mergeSort = async (left, right) => {
+          if (stopRef.current || left >= right) {
+            return;
+          }
+
+          const mid = Math.floor((left + right) / 2);
+          setMergeState('active');
+          setMergeStatus(`Dividindo [${left}..${mid}] e [${mid + 1}..${right}]`);
+
+          await mergeSort(left, mid);
+          await mergeSort(mid + 1, right);
+          await merge(left, mid, right);
+        };
+
+        await mergeSort(0, arr.length - 1);
+
+        const elapsed = `${(performance.now() - startTime).toFixed(3)}ms`;
+        setMergeTime(elapsed);
+
+        if (!stopRef.current) {
+          setMergeArray([...arr]);
+          setMergeState('done');
+          setMergeStatus(`Concluído em ${elapsed} - ${comps} comparações, ${merges} mesclagens`);
+        }
+      };
+
+      const runBubbleSort = async (source) => {
+        const arr = [...source];
+        let comps = 0;
+        let swaps = 0;
+        const startTime = performance.now();
+
+        const updateTime = () => setBubbleTime(`${(performance.now() - startTime).toFixed(3)}ms`);
+
+        for (let i = 0; i < arr.length - 1; i += 1) {
+          if (stopRef.current) {
+            break;
+          }
+
+          let swapped = false;
+          setBubbleState('active');
+          setBubbleStatus(`Passagem ${i + 1} de ${arr.length - 1}`);
+
+          for (let j = 0; j < arr.length - 1 - i; j += 1) {
+            if (stopRef.current) {
+              break;
+            }
+
+            comps += 1;
+            setBubbleComps(comps);
+            setBubbleArray([...arr]);
+            updateTime();
+            await sleep(getDelay(speed));
+
+            if (arr[j] > arr[j + 1]) {
+              [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+              swaps += 1;
+              swapped = true;
+              setBubbleSwaps(swaps);
+              setBubbleArray([...arr]);
+              updateTime();
+              await sleep(Math.max(1, Math.round(getDelay(speed) * 0.6)));
+            }
+          }
+
+          if (!swapped) {
+            break;
+          }
+        }
+
+        const elapsed = `${(performance.now() - startTime).toFixed(3)}ms`;
+        setBubbleTime(elapsed);
+
+        if (!stopRef.current) {
+          setBubbleArray([...arr]);
+          setBubbleState('done');
+          setBubbleStatus(`Concluído em ${elapsed} - ${comps} comparações, ${swaps} trocas`);
+        }
+      };
+
+      const startSort = async () => {
+        if (runningRef.current) {
+          return;
+        }
+
+        runningRef.current = true;
+        stopRef.current = false;
+        setRunning(true);
+        resetStats();
+        setMergeState('idle');
+        setBubbleState('idle');
+        setMergeStatus('Ordenação em andamento...');
+        setBubbleStatus('Ordenação em andamento...');
+
+        const arrA = [...baseArray];
+        const arrB = [...baseArray];
+
+        try {
+          await Promise.all([runMergeSort(arrA), runBubbleSort(arrB)]);
+        } finally {
+          runningRef.current = false;
+          setRunning(false);
+
+          if (stopRef.current) {
+            setMergeState('idle');
+            setBubbleState('idle');
+            setMergeStatus('Parado pelo usuário.');
+            setBubbleStatus('Parado pelo usuário.');
+          }
+        }
+      };
+
+      const stopSort = () => {
+        stopRef.current = true;
+      };
+
+      const handleSpeedChange = (event) => {
+        setSpeed(Number(event.target.value));
+      };
+
+      const handleExampleSelect = (mode) => {
+        if (runningRef.current) {
+          return;
+        }
+
+        loadExample(mode);
+      };
+
+      const barHeights = (arr) => {
+        const maxValue = Math.max(...arr, 1);
+
+        return arr.map((value) => ({
+          height: `${Math.max(4, Math.floor((value / maxValue) * 204))}px`,
+        }));
+      };
+
+      const mergeBars = barHeights(mergeArray);
+      const bubbleBars = barHeights(bubbleArray);
+
+      return (
+        <div className="container">
+          <header>
+            <h1 className="title">
+              <span className="merge">Merge</span> vs <span className="bubble">Bubble</span>
+            </h1>
+            <p className="subtitle">Visualizador de Algoritmos de Ordenação em React</p>
+          </header>
+
+          <div className="controls">
+            <div className="control-group">
+              <label>Velocidade</label>
+              <input type="range" min="1" max="10" value={speed} onChange={handleSpeedChange} />
+              <span className="value-display">{speed}</span>
+            </div>
+
+            <button className="btn btn-primary" onClick={startSort} disabled={running}>
+              ▶ Iniciar
+            </button>
+            <button className="btn btn-danger" onClick={stopSort} disabled={!running}>
+              ■ Parar
+            </button>
+          </div>
+
+          <section className="example-picker">
+            <div className="example-picker-header">
+              <div>
+                <div className="example-picker-title">Listas de exemplo</div>
+                <div className="example-picker-help">Clique em uma lista para carregar o exemplo no visualizador.</div>
+              </div>
+              <div className="example-picker-help">Selecionada: {selectedExampleData.title}</div>
+            </div>
+
+            <div className="example-list">
+              {EXAMPLE_LISTS.map((example) => (
+                <button
+                  key={example.id}
+                  className={`example-card ${selectedExample === example.id ? 'active' : ''}`}
+                  onClick={() => handleExampleSelect(example.id)}
+                  disabled={running}
+                >
+                  <span className="example-card-title">{example.title}</span>
+                  <span className="example-card-desc">{example.description}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <div className="legend">
+            <div className="legend-item"><div className="legend-dot" style={{ background: 'var(--bar-default)' }}></div>Padrão</div>
+            <div className="legend-item"><div className="legend-dot" style={{ background: 'var(--compare)' }}></div>Comparando</div>
+            <div className="legend-item"><div className="legend-dot" style={{ background: 'var(--swap)' }}></div>Trocando</div>
+            <div className="legend-item"><div className="legend-dot" style={{ background: 'var(--sorted)' }}></div>Ordenado</div>
+          </div>
+
+          <div className="panels">
+            <div className="panel">
+              <div className="panel-header">
+                <span className="panel-title merge">Merge Sort</span>
+                <div className="panel-stats">
+                  <span>Comparações: <span className="stat-val">{mergeComps}</span></span>
+                  <span>Mesclagens: <span className="stat-val">{mergeMerges}</span></span>
+                  <span className="timer merge">{mergeTime}</span>
+                </div>
+              </div>
+              <div className="viz-area">
+                {mergeArray.map((value, index) => (
+                  <div
+                    key={`merge-${index}-${value}`}
+                    className={`bar ${mergeState === 'done' ? 'sorted' : ''}`}
+                    style={{ height: mergeBars[index].height }}
+                  ></div>
+                ))}
+              </div>
+              <div className="status-bar">
+                <div className={`status-dot ${mergeState === 'active' ? 'active' : mergeState === 'done' ? 'done' : ''}`}></div>
+                <span>{mergeStatus}</span>
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="panel-header">
+                <span className="panel-title bubble">Bubble Sort</span>
+                <div className="panel-stats">
+                  <span>Comparações: <span className="stat-val">{bubbleComps}</span></span>
+                  <span>Trocas: <span className="stat-val">{bubbleSwaps}</span></span>
+                  <span className="timer bubble">{bubbleTime}</span>
+                </div>
+              </div>
+              <div className="viz-area">
+                {bubbleArray.map((value, index) => (
+                  <div
+                    key={`bubble-${index}-${value}`}
+                    className={`bar ${bubbleState === 'done' ? 'sorted' : ''}`}
+                    style={{ height: bubbleBars[index].height }}
+                  ></div>
+                ))}
+              </div>
+              <div className="status-bar">
+                <div className={`status-dot ${bubbleState === 'active' ? 'active' : bubbleState === 'done' ? 'done' : ''}`}></div>
+                <span>{bubbleStatus}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="complexity">
+            <div className="complexity-card">
+              <strong className="merge">Merge Sort - Complexidade</strong>
+              Melhor caso: <code>O(n log n)</code><br />
+              Caso médio: <code>O(n log n)</code><br />
+              Pior caso: <code>O(n log n)</code><br />
+              Espaço: <code>O(n)</code> - precisa de memória extra
+            </div>
+            <div className="complexity-card">
+              <strong className="bubble">Bubble Sort - Complexidade</strong>
+              Melhor caso: <code>O(n)</code> - array já ordenado<br />
+              Caso médio: <code>O(n²)</code><br />
+              Pior caso: <code>O(n²)</code><br />
+              Espaço: <code>O(1)</code> - in-place
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
